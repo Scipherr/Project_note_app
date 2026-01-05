@@ -24,7 +24,7 @@ async function scrapeTwitterMedia(username) {
       }
     });
 
-    const url = `https://x.com/rogercoo2/media`;
+    const url = `https://x.com/${username}/media`;
     console.log(`[Scraper] Visiting: ${url}`);
     
     win.loadURL(url);
