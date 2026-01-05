@@ -4,8 +4,7 @@ import path from 'node:path';
 import https from 'node:https';
 import started from 'electron-squirrel-startup';
 
-// --- FIX STARTS HERE ---
-// This tells Electron: "media:// is a real, safe protocol like http://"
+// 1. REGISTER SCHEME
 protocol.registerSchemesAsPrivileged([
   { 
     scheme: 'media', 
@@ -18,16 +17,15 @@ protocol.registerSchemesAsPrivileged([
     } 
   }
 ]);
-// --- FIX ENDS HERE ---
 
 if (started) {
   app.quit();
 }
 
+// 2. SETUP PROTOCOL HANDLER
 function setupProtocol() {
   protocol.handle('media', (request) => {
     let filePath = request.url.slice('media://'.length);
-    // Decode URI (e.g. %20 -> space)
     filePath = decodeURIComponent(filePath);
     
     // Windows Fix: Remove leading slash if it exists (e.g. /C:/Users -> C:/Users)
@@ -35,54 +33,73 @@ function setupProtocol() {
       filePath = filePath.slice(1);
     }
     
-    // IMPORTANT: Use file:/// protocol for the internal fetch
     return net.fetch('file:///' + filePath);
   });
 }
 
+// --- IMPROVED DOWNLOAD FUNCTION ---
 const downloadImage = (url, folderPath) => {
   return new Promise((resolve, reject) => {
-    try {
+    // Make request FIRST to check headers for file type
+    https.get(url, (response) => {
+      if (response.statusCode !== 200) {
+        response.resume(); // Consume data to free memory
+        return reject(new Error(`Failed to download: ${response.statusCode}`));
+      }
+
+      // A. Determine Filename Base
       const parsedUrl = new URL(url);
       let fileName = path.basename(parsedUrl.pathname);
+      if (fileName.includes(':')) fileName = fileName.split(':')[0]; // Fix for Twitter "name:large"
 
-      if (fileName.includes(':')) {
-        fileName = fileName.split(':')[0];
+      // B. Determine Extension
+      let ext = path.extname(fileName); // 1. Try URL path (e.g. .jpg)
+
+      // 2. Try URL query param (Twitter uses ?format=jpg)
+      if (!ext) {
+        const formatParam = parsedUrl.searchParams.get('format');
+        if (formatParam) ext = `.${formatParam}`;
       }
 
-      const extInPath = path.extname(fileName);
-      const formatParam = parsedUrl.searchParams.get('format');
-
-      if (formatParam && !extInPath) {
-        fileName += `.${formatParam}`;
-      } else if (!extInPath) {
-        fileName += '.jpg';
+      // 3. Try Server Headers (Content-Type) - The most robust fallback
+      if (!ext) {
+        const contentType = response.headers['content-type'];
+        if (contentType) {
+          if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = '.jpg';
+          else if (contentType.includes('png')) ext = '.png';
+          else if (contentType.includes('gif')) ext = '.gif';
+          else if (contentType.includes('webp')) ext = '.webp';
+          else if (contentType.includes('svg')) ext = '.svg';
+        }
       }
 
+      // 4. Default Fallback
+      if (!ext) ext = '.jpg';
+
+      // Attach extension if missing
+      if (!fileName.endsWith(ext)) {
+        fileName += ext;
+      }
+
+      // C. Save File
       const filePath = path.join(folderPath, fileName);
       const file = fs.createWriteStream(filePath);
 
-      https.get(url, (response) => {
-        if (response.statusCode !== 200) {
-           file.close();
-           fs.unlink(filePath, () => {});
-           reject(new Error(`Failed to download: ${response.statusCode}`));
-           return;
-        }
-        
-        response.pipe(file);
-        file.on('finish', () => {
-          file.close();
-          resolve(filePath);
-        });
-      }).on('error', (err) => {
-        fs.unlink(filePath, () => {});
+      response.pipe(file);
+
+      file.on('finish', () => {
+        file.close();
+        resolve(filePath);
+      });
+
+      file.on('error', (err) => {
+        fs.unlink(filePath, () => {}); // Delete partial file on error
         reject(err);
       });
 
-    } catch (err) {
+    }).on('error', (err) => {
       reject(err);
-    }
+    });
   });
 };
 
@@ -90,8 +107,9 @@ async function scrapeAndDownloadTwitter(profileUrl) {
   const username = profileUrl.split('/').pop().split('?')[0];
   if (!username) throw new Error("Invalid URL");
 
-  const userDataPath = app.getPath('userData');
-  const downloadDir = path.join(userDataPath, 'feeds', username);
+  // Save to "img" folder in the project root
+  const projectRoot = process.cwd(); 
+  const downloadDir = path.join(projectRoot, 'img', username);
   
   if (!fs.existsSync(downloadDir)) {
     fs.mkdirSync(downloadDir, { recursive: true });
@@ -140,7 +158,7 @@ async function scrapeAndDownloadTwitter(profileUrl) {
                 const savedPath = await downloadImage(url, downloadDir);
                 localPaths.push(savedPath);
               } catch (e) {
-                console.error(e);
+                console.error("Download skipped:", e.message);
               }
             }
             resolve(localPaths);

@@ -2,7 +2,7 @@ import './index.css';
 import Konva from 'konva';
 
 // ---------------------------------------------------------
-// 1. STAGE & CANVAS SETUP (Keep exactly the same)
+// 1. STAGE & CANVAS SETUP
 // ---------------------------------------------------------
 const containerElement = document.getElementById('canvas-container');
 const width = containerElement.offsetWidth;
@@ -45,7 +45,7 @@ function getViewportCenter() {
 }
 
 // ---------------------------------------------------------
-// 2. SHAPE HELPERS (Sticky Note, Image - Keep same)
+// 2. SHAPE HELPERS (Sticky Note, Image)
 // ---------------------------------------------------------
 function createStickyNote(text, x, y) {
   const group = new Konva.Group({ x: x, y: y, draggable: true });
@@ -134,7 +134,7 @@ imageInput.addEventListener('change', (e) => {
 });
 
 // ---------------------------------------------------------
-// 4. NEW: REFERENCE SYSTEM (Modal + LocalStorage)
+// 4. REFERENCE SYSTEM (Modal + LocalStorage)
 // ---------------------------------------------------------
 
 const feedSidebar = document.getElementById('feed-sidebar');
@@ -153,11 +153,8 @@ function getStoredImages() {
 
 function saveStoredImages(newPaths) {
     const current = getStoredImages();
-    
-    // CHANGE: Put 'newPaths' BEFORE 'current' to show latest at the top
-    // "Set" removes duplicates if you download the same image twice
+    // Combined unique set (Newest first)
     const combined = [...new Set([...newPaths, ...current])];
-    
     localStorage.setItem('reference_images', JSON.stringify(combined));
     return combined;
 }
@@ -169,11 +166,16 @@ function renderImagesFromStorage() {
     paths.forEach(filePath => {
         const img = document.createElement('img');
         
-        // FIX: Windows paths use '\', but URLs need '/'.
-        // We replace all backslashes with forward slashes.
+        // --- URL FIX START ---
+        // 1. Normalize slashes (Windows uses \, web uses /)
         const normalizedPath = filePath.replace(/\\/g, '/');
         
-        img.src = `media://${normalizedPath}`; 
+        // 2. Encode URI to handle spaces, parenthesis, etc. safely
+        const safePath = encodeURI(normalizedPath);
+        
+        // 3. Use 3 slashes (media:///) to signal absolute path with empty host
+        img.src = `media:///${safePath}`; 
+        // --- URL FIX END ---
         
         img.className = 'feed-item';
         img.draggable = true;
@@ -226,7 +228,7 @@ document.getElementById('clear-refs').onclick = () => {
 // C. Fetch Logic
 btnFetch.onclick = async () => {
     const url = inputUrl.value.trim();
-    if (!url || url === 'empty') return; // Check against your placeholder
+    if (!url || url === 'empty') return; 
 
     modalStatus.innerText = "⏳ Fetching latest...";
     btnFetch.disabled = true;
@@ -237,13 +239,10 @@ btnFetch.onclick = async () => {
         if (localFilePaths.length === 0) {
             modalStatus.innerText = "❌ No new images found.";
         } else {
-            // Save (Newest First)
             saveStoredImages(localFilePaths);
-            
             modalStatus.innerText = `✅ Added ${localFilePaths.length} new refs!`;
             renderImagesFromStorage();
             
-            // Auto-scroll to top to show new items
             document.getElementById('feed-content').scrollTop = 0;
 
             setTimeout(() => {
@@ -280,6 +279,7 @@ container.addEventListener('drop', (e) => {
   if (imageUrl && imageUrl.startsWith('media://')) {
       const imgObj = new Image();
       imgObj.src = imageUrl;
+      // We must allow crossOrigin if needed, but for custom protocol it's usually handled by main
       imgObj.onload = () => {
           const konvaImage = new Konva.Image({
               x: pos.x, y: pos.y, image: imgObj,
