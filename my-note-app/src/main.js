@@ -8,54 +8,59 @@ if (started) {
   app.quit();
 }
 
-// --- Helper: Scrape X (Twitter) Media ---
+// ---------------------------------------------------------
+// 1. HELPER FUNCTION: Scrape X (Twitter) Images
+// ---------------------------------------------------------
 async function scrapeTwitterMedia(username) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
+    // Create a hidden window to load the page
     const win = new BrowserWindow({
-      show: false, // Hidden window
+      show: false, // Keep it hidden
       width: 1000,
       height: 800,
       webPreferences: {
-        offscreen: true,
-        images: true // Load images to ensure they exist
+        offscreen: true, // Render in background
+        images: true // We need images to verify they load
       }
     });
 
-    const url = `https://x.com/${username}/media`;
-    console.log(`Scraping: ${url}`);
+    const url = `https://x.com/rogercoo2/media`;
+    console.log(`[Scraper] Visiting: ${url}`);
     
     win.loadURL(url);
 
-    // Wait for page to finish loading
+    // Wait for the page to finish loading
     win.webContents.on('did-finish-load', async () => {
       try {
-        // Wait 3 seconds for React to render content
+        console.log('[Scraper] Page loaded, waiting for content...');
+        // Wait 3 seconds for Twitter's React app to render images
         await new Promise(r => setTimeout(r, 3000));
 
-        // Execute JS in the hidden window to find images
+        // Run JavaScript inside the hidden window to extract image URLs
         const imageUrls = await win.webContents.executeJavaScript(`
           (() => {
-            // Find all images hosted on twimg (Twitter's image host)
+            // Find all images hosted on 'pbs.twimg.com' (Twitter Media)
             const imgs = Array.from(document.querySelectorAll('img[src*="pbs.twimg.com/media"]'));
+            // Return their src attributes, removing duplicates
             return [...new Set(imgs.map(img => img.src))];
           })()
         `);
 
-        console.log(`Found ${imageUrls.length} images`);
+        console.log(`[Scraper] Found ${imageUrls.length} images`);
         resolve(imageUrls);
       } catch (err) {
-        console.error("Scrape failed", err);
+        console.error("[Scraper] Error finding images:", err);
         resolve([]);
       } finally {
-        // Always close the hidden window
+        // Always close the hidden window when done
         if (!win.isDestroyed()) win.close();
       }
     });
 
-    // Safety timeout: Close after 30s if stuck
+    // Safety Timeout: If it hangs for 30s, kill it
     setTimeout(() => {
       if (!win.isDestroyed()) {
-        console.log("Scrape timed out");
+        console.log("[Scraper] Timed out");
         win.close();
         resolve([]);
       }
@@ -63,53 +68,60 @@ async function scrapeTwitterMedia(username) {
   });
 }
 
-// --- IPC Handlers ---
+// ---------------------------------------------------------
+// 2. IPC HANDLERS (The API for your Renderer)
+// ---------------------------------------------------------
 
+// Handler for saving board data
 ipcMain.handle('save-board', async (event, data) => {
   await fs.writeFile('my-board.json', data);
   return 'saved';
 });
 
-// Handler to fetch feed (Calls the scraper)
-ipcMain.handle('get-feed', async (event, platform) => {
-  if (platform === 'twitter_kelium') {
-    return await scrapeTwitterMedia('Kelium_art');
-  }
-  return [];
-});
-
-// Handler to open Login Window
+// Handler for opening the Twitter Login window
 ipcMain.handle('login-twitter', () => {
   const loginWin = new BrowserWindow({
     width: 500,
     height: 600,
     alwaysOnTop: true,
     webPreferences: {
-      partition: 'persist:main' // Ensure cookies persist
+      partition: 'persist:main' // Saves cookies so the scraper can use them later
     }
   });
   loginWin.loadURL('https://x.com/i/flow/login');
 });
 
+// THIS WAS MISSING OR NOT REGISTERED:
+// Handler for getting the feed (Calls the scraper)
+ipcMain.handle('get-feed', async (event, platform) => {
+  console.log(`[Main] Received request for feed: ${platform}`);
+  
+  if (platform === 'twitter_kelium') {
+    return await scrapeTwitterMedia('Kelium_art');
+  }
+  
+  return [];
+});
+
+// ---------------------------------------------------------
+// 3. WINDOW CREATION (Standard Electron Code)
+// ---------------------------------------------------------
 const createWindow = () => {
-  // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      partition: 'persist:main' // Share cookies with login window
+      partition: 'persist:main' // Share cookies with the login window
     },
   });
 
-  // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
-  // Open the DevTools.
   mainWindow.webContents.openDevTools();
 };
 
