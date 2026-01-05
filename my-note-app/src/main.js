@@ -13,20 +13,21 @@ if (started) {
 // ---------------------------------------------------------
 async function scrapeTwitterMedia(username) {
   return new Promise((resolve) => {
-    // Create a hidden window to load the page
     const win = new BrowserWindow({
-      show: false, // Keep it hidden
+      show: true, // <--- CHANGE TO TRUE (Allows you to see if it works)
       width: 1000,
       height: 800,
       webPreferences: {
-        offscreen: true, // Render in background
-        images: true // We need images to verify they load
+        offscreen: false, // Change to false if showing window
+        images: true,
+        partition: 'persist:main' // <--- CRITICAL FIX: Share cookies with login window
       }
     });
 
     const url = `https://x.com/rogercoo2/media`;
     console.log(`[Scraper] Visiting: ${url}`);
     
+    win.loadURL(url);
     win.loadURL(url);
 
     // Wait for the page to finish loading
