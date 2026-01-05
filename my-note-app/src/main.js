@@ -3,15 +3,94 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
-
-
+// Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
+
+// --- Helper: Scrape X (Twitter) Media ---
+async function scrapeTwitterMedia(username) {
+  return new Promise((resolve, reject) => {
+    const win = new BrowserWindow({
+      show: false, // Hidden window
+      width: 1000,
+      height: 800,
+      webPreferences: {
+        offscreen: true,
+        images: true // Load images to ensure they exist
+      }
+    });
+
+    const url = `https://x.com/${username}/media`;
+    console.log(`Scraping: ${url}`);
+    
+    win.loadURL(url);
+
+    // Wait for page to finish loading
+    win.webContents.on('did-finish-load', async () => {
+      try {
+        // Wait 3 seconds for React to render content
+        await new Promise(r => setTimeout(r, 3000));
+
+        // Execute JS in the hidden window to find images
+        const imageUrls = await win.webContents.executeJavaScript(`
+          (() => {
+            // Find all images hosted on twimg (Twitter's image host)
+            const imgs = Array.from(document.querySelectorAll('img[src*="pbs.twimg.com/media"]'));
+            return [...new Set(imgs.map(img => img.src))];
+          })()
+        `);
+
+        console.log(`Found ${imageUrls.length} images`);
+        resolve(imageUrls);
+      } catch (err) {
+        console.error("Scrape failed", err);
+        resolve([]);
+      } finally {
+        // Always close the hidden window
+        if (!win.isDestroyed()) win.close();
+      }
+    });
+
+    // Safety timeout: Close after 30s if stuck
+    setTimeout(() => {
+      if (!win.isDestroyed()) {
+        console.log("Scrape timed out");
+        win.close();
+        resolve([]);
+      }
+    }, 30000);
+  });
+}
+
+// --- IPC Handlers ---
+
 ipcMain.handle('save-board', async (event, data) => {
   await fs.writeFile('my-board.json', data);
   return 'saved';
 });
+
+// Handler to fetch feed (Calls the scraper)
+ipcMain.handle('get-feed', async (event, platform) => {
+  if (platform === 'twitter_kelium') {
+    return await scrapeTwitterMedia('Kelium_art');
+  }
+  return [];
+});
+
+// Handler to open Login Window
+ipcMain.handle('login-twitter', () => {
+  const loginWin = new BrowserWindow({
+    width: 500,
+    height: 600,
+    alwaysOnTop: true,
+    webPreferences: {
+      partition: 'persist:main' // Ensure cookies persist
+    }
+  });
+  loginWin.loadURL('https://x.com/i/flow/login');
+});
+
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -19,6 +98,7 @@ const createWindow = () => {
     height: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      partition: 'persist:main' // Share cookies with login window
     },
   });
 
@@ -33,22 +113,9 @@ const createWindow = () => {
   mainWindow.webContents.openDevTools();
 };
 
-
-ipcMain.handle('get-feed', async (event, platform) => {
-  
-  const mockImages = [
-    "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=300",
-    "https://images.unsplash.com/photo-1493612276216-ee3925520721?w=300",
-    "https://images.unsplash.com/photo-1544256718-3bcf237f3974?w=300",
-    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300"
-  ];
-
-  return mockImages; 
-});
 app.whenReady().then(() => {
   createWindow();
 
-  
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -56,13 +123,8 @@ app.whenReady().then(() => {
   });
 });
 
-
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
-
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
