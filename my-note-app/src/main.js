@@ -4,6 +4,22 @@ import path from 'node:path';
 import https from 'node:https';
 import started from 'electron-squirrel-startup';
 
+// --- FIX STARTS HERE ---
+// This tells Electron: "media:// is a real, safe protocol like http://"
+protocol.registerSchemesAsPrivileged([
+  { 
+    scheme: 'media', 
+    privileges: { 
+      secure: true, 
+      standard: true, 
+      supportFetchAPI: true, 
+      bypassCSP: true,
+      stream: true
+    } 
+  }
+]);
+// --- FIX ENDS HERE ---
+
 if (started) {
   app.quit();
 }
@@ -11,11 +27,16 @@ if (started) {
 function setupProtocol() {
   protocol.handle('media', (request) => {
     let filePath = request.url.slice('media://'.length);
+    // Decode URI (e.g. %20 -> space)
     filePath = decodeURIComponent(filePath);
+    
+    // Windows Fix: Remove leading slash if it exists (e.g. /C:/Users -> C:/Users)
     if (process.platform === 'win32' && filePath.startsWith('/') && !filePath.startsWith('//')) {
       filePath = filePath.slice(1);
     }
-    return net.fetch('file://' + filePath);
+    
+    // IMPORTANT: Use file:/// protocol for the internal fetch
+    return net.fetch('file:///' + filePath);
   });
 }
 
@@ -23,36 +44,28 @@ const downloadImage = (url, folderPath) => {
   return new Promise((resolve, reject) => {
     try {
       const parsedUrl = new URL(url);
-      
-      // 1. Get the base ID (e.g., "F_xXYZ...")
       let fileName = path.basename(parsedUrl.pathname);
 
-      // 2. Clean up weird suffixes like ":large" (common on Twitter)
-      // Example: image.jpg:large -> image.jpg
       if (fileName.includes(':')) {
         fileName = fileName.split(':')[0];
       }
 
-      // 3. Detect Extension from "?format=jpg" or default to .jpg
       const extInPath = path.extname(fileName);
       const formatParam = parsedUrl.searchParams.get('format');
 
       if (formatParam && !extInPath) {
-        // Use the format param if no extension exists in path
         fileName += `.${formatParam}`;
       } else if (!extInPath) {
-        // Fallback if absolutely no extension found
         fileName += '.jpg';
       }
 
       const filePath = path.join(folderPath, fileName);
-
       const file = fs.createWriteStream(filePath);
+
       https.get(url, (response) => {
-        // Check if we actually got an image (optional safety)
         if (response.statusCode !== 200) {
            file.close();
-           fs.unlink(filePath, () => {}); // Delete empty file
+           fs.unlink(filePath, () => {});
            reject(new Error(`Failed to download: ${response.statusCode}`));
            return;
         }

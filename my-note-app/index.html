@@ -3,76 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <title>My Visual Board</title>
-    <style>
-      body { margin: 0; padding: 0; background-color: #f0f0f049; font-family: sans-serif; }
-      
-      /* --- Existing Tool Styles --- */
-      #app { display: flex; height: 100vh; overflow: hidden; }
-      #tools {
-        width: 60px; background: #fff; border-right: 1px solid #ccc;
-        display: flex; flex-direction: column; align-items: center; padding-top: 10px; z-index: 10;
-      }
-      .tool-btn {
-        width: 40px; height: 40px; margin-bottom: 10px; border: 1px solid #ddd;
-        background: #f9f9f9; border-radius: 8px; cursor: pointer; font-size: 20px;
-        display: flex; align-items: center; justify-content: center;
-      }
-      .tool-btn:hover { background: #e0e0e0; }
-      #canvas-container { flex-grow: 1; background-color: #f0f0f0; position: relative; overflow: hidden; }
-
-      /* --- Sidebar Styles --- */
-      #feed-sidebar {
-        position: fixed; top: 0; right: -320px; width: 300px; height: 100%;
-        background: #fff; box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-        transition: right 0.3s ease; z-index: 20; display: flex; flex-direction: column;
-      }
-      #feed-sidebar.open { right: 0; }
-      #feed-sidebar h3 { padding: 15px; margin: 0; background: #eee; border-bottom: 1px solid #ddd; }
-      #feed-content { flex: 1; overflow-y: auto; padding: 10px; }
-      .feed-item { width: 100%; border-radius: 5px; margin-bottom: 10px; cursor: grab; border: 1px solid #ddd; }
-      .feed-item:active { cursor: grabbing; }
-
-      /* --- NEW: Modal Window Styles --- */
-      .modal {
-        display: none; /* Hidden by default */
-        position: fixed; z-index: 100; left: 0; top: 0;
-        width: 100%; height: 100%; overflow: auto;
-        background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
-      }
-      .modal-content {
-        background-color: #fefefe; margin: 15% auto; padding: 20px;
-        border: 1px solid #888; width: 400px; border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        display: flex; flex-direction: column; gap: 10px;
-      }
-      .close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; align-self: flex-end; cursor: pointer; }
-      .close-modal:hover { color: black; }
-      .modal-input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-      .modal-btn { padding: 10px; background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-      .modal-btn:disabled { background-color: #ccc; }
-      .status-text { font-size: 12px; color: #555; }
-      #feed-content { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding: 0; 
-    background: #222; /* Dark background for carousel */
-    scroll-behavior: smooth;
-    scroll-snap-type: y mandatory; /* KEY: Makes it snap like a carousel */
-}
-
-.feed-item { 
-    width: 100%; 
-    height: auto;      /* Maintain aspect ratio */
-    max-height: 300px; /* Optional: limit height so you see more at once */
-    object-fit: contain;
-    display: block;
-    margin-bottom: 2px;
-    border-bottom: 1px solid #444;
-    scroll-snap-align: start; /* KEY: Snaps image to top */
-    cursor: grab; 
-}
-.feed-item:active { cursor: grabbing; }
-    </style>
   </head>
   <body>
     <div id="app">
@@ -91,9 +21,7 @@
 
     <div id="feed-sidebar">
         <h3>Reference Library <button id="clear-refs" style="float:right; font-size:10px;">Clear</button></h3>
-        <div id="feed-content">
-            <div id="feed-grid"></div>
-        </div>
+        <div id="feed-content"></div>
     </div>
 
     <div id="ref-modal" class="modal">

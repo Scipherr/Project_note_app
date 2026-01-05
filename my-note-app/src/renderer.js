@@ -138,7 +138,7 @@ imageInput.addEventListener('change', (e) => {
 // ---------------------------------------------------------
 
 const feedSidebar = document.getElementById('feed-sidebar');
-const feedGrid = document.getElementById('feed-grid');
+const feedContent = document.getElementById('feed-content');
 const modal = document.getElementById('ref-modal');
 const modalStatus = document.getElementById('modal-status');
 const closeModalBtn = document.getElementById('close-modal-btn');
@@ -164,13 +164,19 @@ function saveStoredImages(newPaths) {
 
 function renderImagesFromStorage() {
     const paths = getStoredImages();
-    feedGrid.innerHTML = ''; // Clear current view
+    feedContent.innerHTML = ''; // Clear current view
 
     paths.forEach(filePath => {
         const img = document.createElement('img');
-        img.src = `media://${filePath}`; 
+        
+        // FIX: Windows paths use '\', but URLs need '/'.
+        // We replace all backslashes with forward slashes.
+        const normalizedPath = filePath.replace(/\\/g, '/');
+        
+        img.src = `media://${normalizedPath}`; 
+        
         img.className = 'feed-item';
-        img.draggable = true; // Essential for Drag-and-Drop
+        img.draggable = true;
         
         // Drag to Canvas Logic
         img.addEventListener('dragstart', (e) => {
@@ -189,7 +195,7 @@ function renderImagesFromStorage() {
              }
         });
 
-        feedGrid.appendChild(img);
+        feedContent.appendChild(img);
     });
 }
 
