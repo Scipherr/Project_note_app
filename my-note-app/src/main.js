@@ -1,12 +1,17 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
-
+ipcMain.handle('save-board', async (event, data) => {
+  await fs.writeFile('my-board.json', data);
+  return 'saved';
+});
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({

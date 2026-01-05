@@ -1,13 +1,15 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Hello World!</title>
-
+    <title>My Visual Board</title>
+    <style>
+      body { margin: 0; padding: 0; overflow: hidden; background-color: #f0f0f0; }
+      #canvas-container { width: 100vw; height: 100vh; }
+    </style>
   </head>
   <body>
-    <h1>💖 Hello World!</h1>
-    <p>Welcome to your Electron application.</p>
+    <div id="canvas-container"></div>
     <script type="module" src="/src/renderer.js"></script>
   </body>
 </html>
