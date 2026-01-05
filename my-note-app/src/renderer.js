@@ -2,7 +2,7 @@ import './index.css';
 import Konva from 'konva';
 
 // ---------------------------------------------------------
-// 1. STAGE & CANVAS SETUP
+// 1. STAGE & CANVAS SETUP (Keep exactly the same)
 // ---------------------------------------------------------
 const containerElement = document.getElementById('canvas-container');
 const width = containerElement.offsetWidth;
@@ -18,23 +18,18 @@ const stage = new Konva.Stage({
 const layer = new Konva.Layer();
 stage.add(layer);
 
-// --- Zoom & Pan Logic ---
 const scaleBy = 1.1;
 stage.on('wheel', (e) => {
   e.evt.preventDefault();
   const oldScale = stage.scaleX();
   const pointer = stage.getPointerPosition();
-
   const mousePointTo = {
     x: (pointer.x - stage.x()) / oldScale,
     y: (pointer.y - stage.y()) / oldScale,
   };
-
   const direction = e.evt.deltaY > 0 ? -1 : 1;
   const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
-
   stage.scale({ x: newScale, y: newScale });
-
   const newPos = {
     x: pointer.x - mousePointTo.x * newScale,
     y: pointer.y - mousePointTo.y * newScale,
@@ -42,7 +37,6 @@ stage.on('wheel', (e) => {
   stage.position(newPos);
 });
 
-// Helper to get center of view
 function getViewportCenter() {
     const scale = stage.scaleX();
     const x = (-stage.x() + stage.width() / 2) / scale;
@@ -51,45 +45,32 @@ function getViewportCenter() {
 }
 
 // ---------------------------------------------------------
-// 2. SHAPE HELPERS
+// 2. SHAPE HELPERS (Sticky Note, Image - Keep same)
 // ---------------------------------------------------------
-
 function createStickyNote(text, x, y) {
   const group = new Konva.Group({ x: x, y: y, draggable: true });
-
   const rect = new Konva.Rect({
-    width: 200, height: 150,
-    fill: '#fff9c4', stroke: '#ddd', strokeWidth: 1,
-    shadowColor: 'black', shadowBlur: 10, shadowOpacity: 0.1,
-    cornerRadius: 5,
+    width: 200, height: 150, fill: '#fff9c4', stroke: '#ddd', strokeWidth: 1,
+    shadowColor: 'black', shadowBlur: 10, shadowOpacity: 0.1, cornerRadius: 5,
   });
-
   const textNode = new Konva.Text({
-    text: text, x: 10, y: 10, width: 180,
-    fontSize: 16, fontFamily: 'Calibri', fill: '#555',
+    text: text, x: 10, y: 10, width: 180, fontSize: 16, fontFamily: 'Calibri', fill: '#555',
   });
-
   function updateShape() {
     const textHeight = textNode.height();
     const newHeight = Math.max(150, textHeight + 20);
     rect.height(newHeight);
   }
   updateShape();
-
   group.add(rect);
   group.add(textNode);
   layer.add(group);
   
-  // Double click to edit text
   group.on('dblclick', () => {
     textNode.hide();
     const textPosition = textNode.getAbsolutePosition();
     const stageBox = stage.container().getBoundingClientRect();
-    const areaPosition = {
-      x: stageBox.left + textPosition.x,
-      y: stageBox.top + textPosition.y,
-    };
-
+    const areaPosition = { x: stageBox.left + textPosition.x, y: stageBox.top + textPosition.y };
     const textarea = document.createElement('textarea');
     document.body.appendChild(textarea);
     textarea.value = textNode.text();
@@ -99,51 +80,24 @@ function createStickyNote(text, x, y) {
     textarea.style.width = textNode.width() + 'px';
     textarea.style.fontSize = textNode.fontSize() + 'px';
     textarea.style.fontFamily = textNode.fontFamily();
-    textarea.style.lineHeight = textNode.lineHeight();
-    textarea.style.border = 'none';
-    textarea.style.padding = '0px';
-    textarea.style.margin = '0px';
-    textarea.style.background = 'transparent';
-    textarea.style.outline = 'none';
-    textarea.style.resize = 'none';
+    textarea.style.border = 'none'; textarea.style.padding = '0px'; textarea.style.margin = '0px';
+    textarea.style.background = 'transparent'; textarea.style.outline = 'none'; textarea.style.resize = 'none';
     textarea.style.color = textNode.fill();
-    textarea.style.overflow = 'hidden'; 
-    
     const scale = stage.scaleX();
     textarea.style.transform = `scale(${scale})`;
     textarea.style.transformOrigin = 'left top';
-
     function autoExpand() {
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-        const newHeight = Math.max(150, textarea.scrollHeight + 20);
-        rect.height(newHeight);
+        textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px';
+        const newHeight = Math.max(150, textarea.scrollHeight + 20); rect.height(newHeight);
     }
-
-    autoExpand();
-    textarea.focus();
-    textarea.addEventListener('input', autoExpand);
-
-    function removeTextarea() {
-        if (textarea.parentNode) textarea.parentNode.removeChild(textarea);
-        textNode.show();
-    }
-
-    function setText() {
-        textNode.text(textarea.value);
-        updateShape(); 
-        removeTextarea();
-    }
-
-    textarea.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setText(); }
-        if (e.key === 'Escape') { updateShape(); removeTextarea(); }
-    });
+    autoExpand(); textarea.focus(); textarea.addEventListener('input', autoExpand);
+    function removeTextarea() { if (textarea.parentNode) textarea.parentNode.removeChild(textarea); textNode.show(); }
+    function setText() { textNode.text(textarea.value); updateShape(); removeTextarea(); }
+    textarea.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setText(); } if (e.key === 'Escape') { updateShape(); removeTextarea(); } });
     textarea.addEventListener('blur', function () { setText(); });
   });
 }
 
-// Helper to add image from File object (Desktop Drop)
 function addImageToStage(file, x, y) {
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -151,9 +105,7 @@ function addImageToStage(file, x, y) {
         imgObj.src = event.target.result;
         imgObj.onload = () => {
             const konvaImage = new Konva.Image({
-                x: x, y: y, image: imgObj,
-                width: 200, height: 200 * (imgObj.height / imgObj.width),
-                draggable: true,
+                x: x, y: y, image: imgObj, width: 200, height: 200 * (imgObj.height / imgObj.width), draggable: true,
             });
             layer.add(konvaImage);
         };
@@ -164,19 +116,14 @@ function addImageToStage(file, x, y) {
 // ---------------------------------------------------------
 // 3. TOOLBAR LISTENERS
 // ---------------------------------------------------------
-
 document.getElementById('btn-note').addEventListener('click', () => {
     const center = getViewportCenter();
     createStickyNote('New Note', center.x - 100, center.y - 75);
 });
 
-// Hidden file input for Image Button
 const imageInput = document.createElement('input');
-imageInput.type = 'file';
-imageInput.accept = 'image/*';
-imageInput.style.display = 'none';
+imageInput.type = 'file'; imageInput.accept = 'image/*'; imageInput.style.display = 'none';
 document.body.appendChild(imageInput);
-
 document.getElementById('btn-image').addEventListener('click', () => { imageInput.click(); });
 imageInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
@@ -186,170 +133,151 @@ imageInput.addEventListener('change', (e) => {
     }
 });
 
-// Placeholders
-document.getElementById('btn-link').addEventListener('click', () => alert('Link tool coming soon!'));
-document.getElementById('btn-board').addEventListener('click', () => alert('Board tool coming soon!'));
-document.getElementById('btn-table').addEventListener('click', () => alert('Table tool coming soon!'));
-
 // ---------------------------------------------------------
-// 4. FEED SIDEBAR & DOWNLOADER LOGIC
+// 4. NEW: REFERENCE SYSTEM (Modal + LocalStorage)
 // ---------------------------------------------------------
 
 const feedSidebar = document.getElementById('feed-sidebar');
-const feedContent = document.getElementById('feed-content');
+const feedGrid = document.getElementById('feed-grid');
+const modal = document.getElementById('ref-modal');
+const modalStatus = document.getElementById('modal-status');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const btnFetch = document.getElementById('btn-fetch-confirm');
+const inputUrl = document.getElementById('ref-input-url');
 
-// Helper to Create the Input Box & Download Button
-function createFeedUI() {
-    feedContent.innerHTML = ''; // Clear existing
-
-    // Container
-    const container = document.createElement('div');
-    container.style.padding = '10px';
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
-    container.style.gap = '10px';
-    container.style.borderBottom = '1px solid #ccc';
-
-    // 1. Login Button
-    const loginBtn = document.createElement('button');
-    loginBtn.innerText = "🔑 Login to X (First Time)";
-    loginBtn.style.padding = '8px';
-    loginBtn.style.cursor = 'pointer';
-    loginBtn.title = "Click this if scraper finds 0 images";
-    loginBtn.onclick = () => window.electronAPI.loginTwitter();
-
-    // 2. Input Box
-    const input = document.createElement('input');
-    input.placeholder = "Paste X.com profile link...";
-    input.style.padding = '8px';
-    input.style.border = '1px solid #ccc';
-    input.style.borderRadius = '4px';
-    input.value = "https://x.com/Kelium_art"; // Default example
-
-    // 3. Download Button
-    const fetchBtn = document.createElement('button');
-    fetchBtn.innerText = "📥 Download References";
-    fetchBtn.style.padding = '10px';
-    fetchBtn.style.backgroundColor = '#2196F3';
-    fetchBtn.style.color = 'white';
-    fetchBtn.style.border = 'none';
-    fetchBtn.style.borderRadius = '4px';
-    fetchBtn.style.cursor = 'pointer';
-    fetchBtn.style.fontWeight = 'bold';
-
-    // 4. Status Text
-    const statusText = document.createElement('div');
-    statusText.style.fontSize = '12px';
-    statusText.style.color = '#555';
-    statusText.style.marginTop = '5px';
-    statusText.innerText = 'Ready to download.';
-
-    // Logic: Click Download
-    fetchBtn.onclick = async () => {
-        const url = input.value.trim();
-        if (!url) return;
-
-        statusText.innerText = "⏳ Scraping & Downloading... (Wait ~10s)";
-        fetchBtn.disabled = true;
-        fetchBtn.style.backgroundColor = '#ccc';
-
-        try {
-            // Call Main Process to scrape and download
-            const localFilePaths = await window.electronAPI.fetchFeed(url);
-            
-            if (localFilePaths.length === 0) {
-                statusText.innerText = "❌ No images found. Please Login above.";
-            } else {
-                statusText.innerText = `✅ Success! Loaded ${localFilePaths.length} images.`;
-                renderLocalImages(localFilePaths);
-            }
-        } catch (err) {
-            statusText.innerText = "❌ Error: " + err.message;
-            console.error(err);
-        } finally {
-            fetchBtn.disabled = false;
-            fetchBtn.style.backgroundColor = '#2196F3';
-        }
-    };
-
-    container.appendChild(loginBtn);
-    container.appendChild(input);
-    container.appendChild(fetchBtn);
-    container.appendChild(statusText);
-    feedContent.appendChild(container);
-
-    // Image Grid Container
-    const grid = document.createElement('div');
-    grid.id = 'feed-grid';
-    grid.style.display = 'flex';
-    grid.style.flexDirection = 'column';
-    grid.style.gap = '15px';
-    grid.style.padding = '10px';
-    feedContent.appendChild(grid);
+// A. LocalStorage Helpers
+function getStoredImages() {
+    const stored = localStorage.getItem('reference_images');
+    return stored ? JSON.parse(stored) : [];
 }
 
-// Helper to Render Images with media:// protocol
-function renderLocalImages(paths) {
-    const grid = document.getElementById('feed-grid');
-    grid.innerHTML = ''; // Clear old images
+function saveStoredImages(newPaths) {
+    const current = getStoredImages();
+    
+    // CHANGE: Put 'newPaths' BEFORE 'current' to show latest at the top
+    // "Set" removes duplicates if you download the same image twice
+    const combined = [...new Set([...newPaths, ...current])];
+    
+    localStorage.setItem('reference_images', JSON.stringify(combined));
+    return combined;
+}
+
+function renderImagesFromStorage() {
+    const paths = getStoredImages();
+    feedGrid.innerHTML = ''; // Clear current view
 
     paths.forEach(filePath => {
         const img = document.createElement('img');
-        
-        // USE CUSTOM PROTOCOL (Allows local file access)
         img.src = `media://${filePath}`; 
-        
         img.className = 'feed-item';
-        img.draggable = true;
+        img.draggable = true; // Essential for Drag-and-Drop
         
-        // Pass the media:// URL during Drag
+        // Drag to Canvas Logic
         img.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', img.src);
             e.dataTransfer.effectAllowed = 'copy';
         });
-        
-        grid.appendChild(img);
+
+        // Right-click to delete
+        img.addEventListener('contextmenu', (e) => {
+             e.preventDefault();
+             if(confirm("Remove this image?")) {
+                 const current = getStoredImages();
+                 const newStore = current.filter(p => p !== filePath);
+                 localStorage.setItem('reference_images', JSON.stringify(newStore));
+                 renderImagesFromStorage();
+             }
+        });
+
+        feedGrid.appendChild(img);
     });
 }
 
-// Toggle Sidebar Listener
+// B. Modal Interactions
 document.getElementById('btn-feed').addEventListener('click', () => {
-    feedSidebar.classList.toggle('open');
-    // Initialize UI if empty
-    if (feedSidebar.classList.contains('open') && feedContent.children.length === 0) {
-        createFeedUI();
-    }
+    modal.style.display = "block";
+    feedSidebar.classList.add('open');
 });
 
-// ---------------------------------------------------------
-// 5. DRAG AND DROP HANDLER (FINAL)
-// ---------------------------------------------------------
+document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+    feedSidebar.classList.toggle('open');
+});
 
+closeModalBtn.onclick = () => { modal.style.display = "none"; };
+window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; };
+
+document.getElementById('btn-login-twitter').onclick = () => {
+    window.electronAPI.loginTwitter();
+};
+
+document.getElementById('clear-refs').onclick = () => {
+    if(confirm("Clear library?")) {
+        localStorage.removeItem('reference_images');
+        renderImagesFromStorage();
+    }
+};
+
+// C. Fetch Logic
+btnFetch.onclick = async () => {
+    const url = inputUrl.value.trim();
+    if (!url || url === 'empty') return; // Check against your placeholder
+
+    modalStatus.innerText = "⏳ Fetching latest...";
+    btnFetch.disabled = true;
+
+    try {
+        const localFilePaths = await window.electronAPI.fetchFeed(url);
+        
+        if (localFilePaths.length === 0) {
+            modalStatus.innerText = "❌ No new images found.";
+        } else {
+            // Save (Newest First)
+            saveStoredImages(localFilePaths);
+            
+            modalStatus.innerText = `✅ Added ${localFilePaths.length} new refs!`;
+            renderImagesFromStorage();
+            
+            // Auto-scroll to top to show new items
+            document.getElementById('feed-content').scrollTop = 0;
+
+            setTimeout(() => {
+                modal.style.display = "none";
+                modalStatus.innerText = "Ready to fetch.";
+            }, 1000);
+        }
+    } catch (err) {
+        modalStatus.innerText = "Error: " + err.message;
+    } finally {
+        btnFetch.disabled = false;
+    }
+};
+
+// D. Initialize
+renderImagesFromStorage();
+
+// ---------------------------------------------------------
+// 5. DRAG AND DROP HANDLER
+// ---------------------------------------------------------
 const container = document.getElementById('canvas-container');
-
 container.addEventListener('dragover', (e) => { e.preventDefault(); });
 
 container.addEventListener('drop', (e) => {
   e.preventDefault();
   stage.setPointersPositions(e);
   
-  // Calculate Drop Position relative to Stage
   const transform = stage.getAbsoluteTransform().copy();
   transform.invert();
   const pos = transform.point(stage.getPointerPosition());
-
   const imageUrl = e.dataTransfer.getData('text/plain');
 
-  // CASE 1: Local Downloaded Files (media://)
+  // Handle Local media://
   if (imageUrl && imageUrl.startsWith('media://')) {
       const imgObj = new Image();
-      imgObj.src = imageUrl; // Browser handles the protocol now
+      imgObj.src = imageUrl;
       imgObj.onload = () => {
           const konvaImage = new Konva.Image({
-              x: pos.x, y: pos.y,
-              image: imgObj,
-              width: 250, 
-              height: 250 * (imgObj.height / imgObj.width),
+              x: pos.x, y: pos.y, image: imgObj,
+              width: 250, height: 250 * (imgObj.height / imgObj.width),
               draggable: true,
           });
           layer.add(konvaImage);
@@ -357,35 +285,31 @@ container.addEventListener('drop', (e) => {
       return;
   }
 
-  // CASE 2: Desktop Files (Drag from Folder)
+  // Handle Desktop Files
   const files = e.dataTransfer.files;
   if (files.length > 0) {
-    const file = files[0];
-    if (file.type.startsWith('image/')) {
-        addImageToStage(file, pos.x, pos.y);
+    if (files[0].type.startsWith('image/')) {
+        addImageToStage(files[0], pos.x, pos.y);
     }
     return;
   }
-
-  // CASE 3: Web Images (Drag from Chrome/Browser)
+  
+  // Handle Web Images
   if (imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
      const imgObj = new Image();
      imgObj.src = imageUrl;
      imgObj.crossOrigin = 'Anonymous';
      imgObj.onload = () => {
          const konvaImage = new Konva.Image({
-             x: pos.x, y: pos.y, 
-             image: imgObj,
-             width: 250, 
-             height: 250 * (imgObj.height / imgObj.width), 
-             draggable: true
+             x: pos.x, y: pos.y, image: imgObj,
+             width: 250, height: 250 * (imgObj.height / imgObj.width), draggable: true
          });
          layer.add(konvaImage);
      };
   }
 });
 
-// Double Click on empty stage = New Note
+// Double click empty stage -> New Note
 stage.on('dblclick', (e) => {
   if (e.target === stage) {
     const transform = stage.getAbsoluteTransform().copy();

@@ -21,20 +21,55 @@ function setupProtocol() {
 
 const downloadImage = (url, folderPath) => {
   return new Promise((resolve, reject) => {
-    const fileName = path.basename(new URL(url).pathname);
-    const filePath = path.join(folderPath, fileName);
+    try {
+      const parsedUrl = new URL(url);
+      
+      // 1. Get the base ID (e.g., "F_xXYZ...")
+      let fileName = path.basename(parsedUrl.pathname);
 
-    const file = fs.createWriteStream(filePath);
-    https.get(url, (response) => {
-      response.pipe(file);
-      file.on('finish', () => {
-        file.close();
-        resolve(filePath);
+      // 2. Clean up weird suffixes like ":large" (common on Twitter)
+      // Example: image.jpg:large -> image.jpg
+      if (fileName.includes(':')) {
+        fileName = fileName.split(':')[0];
+      }
+
+      // 3. Detect Extension from "?format=jpg" or default to .jpg
+      const extInPath = path.extname(fileName);
+      const formatParam = parsedUrl.searchParams.get('format');
+
+      if (formatParam && !extInPath) {
+        // Use the format param if no extension exists in path
+        fileName += `.${formatParam}`;
+      } else if (!extInPath) {
+        // Fallback if absolutely no extension found
+        fileName += '.jpg';
+      }
+
+      const filePath = path.join(folderPath, fileName);
+
+      const file = fs.createWriteStream(filePath);
+      https.get(url, (response) => {
+        // Check if we actually got an image (optional safety)
+        if (response.statusCode !== 200) {
+           file.close();
+           fs.unlink(filePath, () => {}); // Delete empty file
+           reject(new Error(`Failed to download: ${response.statusCode}`));
+           return;
+        }
+        
+        response.pipe(file);
+        file.on('finish', () => {
+          file.close();
+          resolve(filePath);
+        });
+      }).on('error', (err) => {
+        fs.unlink(filePath, () => {});
+        reject(err);
       });
-    }).on('error', (err) => {
-      fs.unlink(filePath, () => {});
+
+    } catch (err) {
       reject(err);
-    });
+    }
   });
 };
 
