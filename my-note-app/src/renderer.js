@@ -4,6 +4,9 @@ import Konva from 'konva';
 const containerElement = document.getElementById('canvas-container');
 const width = containerElement.offsetWidth;
 const height = containerElement.offsetHeight;
+const feedBtn = document.getElementById('btn-feed');
+const feedSidebar = document.getElementById('feed-sidebar');
+const feedContent = document.getElementById('feed-content');
 
 const stage = new Konva.Stage({
   container: 'canvas-container',
@@ -168,7 +171,7 @@ function createStickyNote(text, x, y) {
   });
 }
 
-// Reuseable function to add image
+
 function addImageToStage(file, x, y) {
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -226,7 +229,77 @@ document.getElementById('btn-board').addEventListener('click', () => {
 document.getElementById('btn-table').addEventListener('click', () => {
     alert('Table tool coming soon!');
 });
+document.getElementById('btn-feed').addEventListener('click', async () => {
+  feedSidebar.classList.toggle('open');
+  if (feedSidebar.classList.contains('open') && feedContent.children.length === 0) {
+        try {
+            const images = await window.electronAPI.getFeed('pinterest'); // Call the main process
+            renderFeedItems(images);
+        } catch (error) {
+            console.error("Failed to load feed:", error);
+        }
+    }
+});
+function renderFeedItems(imageUrls) {
+    feedContent.innerHTML = ''; // Clear loading state
+    imageUrls.forEach(url => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.className = 'feed-item';
+        img.draggable = true; // Enable HTML5 Drag
+        
+        // Setup Drag Event
+        img.addEventListener('dragstart', (e) => {
+            // We send the image URL as the drag data
+            e.dataTransfer.setData('text/plain', url);
+            e.dataTransfer.effectAllowed = 'copy';
+        });
+        
+        feedContent.appendChild(img);
+    });
+}
 
+// 3. Update Drop Handler to accept Feed Items
+// Find your existing `container.addEventListener('drop', ...)` block and REPLACE it with this:
+
+container.addEventListener('drop', (e) => {
+  e.preventDefault();
+
+  stage.setPointersPositions(e);
+  const transform = stage.getAbsoluteTransform().copy();
+  transform.invert();
+  const pos = transform.point(stage.getPointerPosition());
+
+  // Check 1: Files dropped from Desktop
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    const file = files[0];
+    if (file.type.startsWith('image/')) {
+        addImageToStage(file, pos.x, pos.y);
+    }
+    return;
+  }
+
+  // Check 2: Images dragged from Feed Sidebar
+  const imageUrl = e.dataTransfer.getData('text/plain');
+  if (imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
+      // Helper to add URL image
+      const imgObj = new Image();
+      imgObj.src = imageUrl;
+      imgObj.crossOrigin = 'Anonymous'; // Important for Konva export
+      imgObj.onload = () => {
+          const konvaImage = new Konva.Image({
+              x: pos.x,
+              y: pos.y,
+              image: imgObj,
+              width: 200,
+              height: 200 * (imgObj.height / imgObj.width),
+              draggable: true,
+          });
+          layer.add(konvaImage);
+      };
+  }
+});
 // --- Existing Stage Events ---
 
 stage.on('dblclick', (e) => {
@@ -261,3 +334,4 @@ container.addEventListener('drop', (e) => {
     }
   }
 });
+

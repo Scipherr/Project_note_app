@@ -4,38 +4,11 @@
     <meta charset="UTF-8" />
     <title>My Visual Board</title>
     <style>
-      /* Basic reset */
+    
       body { margin: 0; padding: 0; background-color: #f0f0f049; }
       
-      /* Layout Container */
-      #app {
-        display: flex;
-        width: 100vw;
-        height: 100vh;
-      }
-
-      /* Left Tool Section */
-      #tools {
-        width: 60px;
-        background-color: #e0e0e0;
-        border-right: 1px solid #ccc;
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 15px;
-        gap: 15px;
-        z-index: 10;
-        box-shadow: 2px 0 5px rgba(0,0,0,0.05);
-      }
-
-      /* Canvas Area */
-      #canvas-container {
-        flex-grow: 1;
-        height: 100%;
-        background-color: #ffd689f3;
-        position: relative;
-      }
+    
+      
     </style>
   </head>
   <body>
@@ -46,10 +19,15 @@
         <button class="tool-btn" id="btn-link" title="Link">🔗</button>
         <button class="tool-btn" id="btn-board" title="Board">📋</button>
         <button class="tool-btn" id="btn-table" title="Table">📊</button>
+        <button class="tool-btn" id="btn-feed" title="Reference Feed">📡</button>
       </div>
       
       <div id="canvas-container"></div>
     </div>
+    <div id="feed-sidebar" class="hidden">
+    <h3>References</h3>
+    <div id="feed-content"></div>
+</div>
     <script type="module" src="/src/renderer.js"></script>
   </body>
 </html>
