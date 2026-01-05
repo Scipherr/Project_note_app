@@ -1,21 +1,20 @@
 import './index.css';
 import Konva from 'konva';
 
-// 1. Initialize the Stage (The Infinite Canvas)
-const width = window.innerWidth;
-const height = window.innerHeight;
+const containerElement = document.getElementById('canvas-container');
+const width = containerElement.offsetWidth;
+const height = containerElement.offsetHeight;
 
 const stage = new Konva.Stage({
   container: 'canvas-container',
   width: width,
   height: height,
-  draggable: true, // Allows panning the entire board
+  draggable: true,
 });
 
 const layer = new Konva.Layer();
 stage.add(layer);
 
-// 2. Handle Zooming (Mouse Wheel)
 const scaleBy = 1.1;
 stage.on('wheel', (e) => {
   e.evt.preventDefault();
@@ -40,7 +39,6 @@ stage.on('wheel', (e) => {
   stage.position(newPos);
 });
 
-// 3. Function to Create a Sticky Note
 function createStickyNote(text, x, y) {
   const group = new Konva.Group({
     x: x,
@@ -51,7 +49,7 @@ function createStickyNote(text, x, y) {
   const rect = new Konva.Rect({
     width: 200,
     height: 150,
-    fill: '#fff9c4', // Classic sticky note yellow
+    fill: '#fff9c4',
     stroke: '#ddd',
     strokeWidth: 1,
     shadowColor: 'black',
@@ -74,20 +72,78 @@ function createStickyNote(text, x, y) {
   group.add(textNode);
   layer.add(group);
   
-  // Double click to edit text (Simple prompt for now)
   group.on('dblclick', () => {
-    const newText = prompt('Edit note:', textNode.text());
-    if (newText !== null) {
-      textNode.text(newText);
+    textNode.hide();
+
+    const textPosition = textNode.getAbsolutePosition();
+    const stageBox = stage.container().getBoundingClientRect();
+
+    const areaPosition = {
+      x: stageBox.left + textPosition.x,
+      y: stageBox.top + textPosition.y,
+    };
+
+    const textarea = document.createElement('textarea');
+    document.body.appendChild(textarea);
+
+    textarea.value = textNode.text();
+    textarea.style.position = 'absolute';
+    textarea.style.top = areaPosition.y + 'px';
+    textarea.style.left = areaPosition.x + 'px';
+    textarea.style.width = textNode.width() + 'px';
+    textarea.style.height = (textNode.height() + 20) + 'px'; 
+    textarea.style.fontSize = textNode.fontSize() + 'px';
+    textarea.style.fontFamily = textNode.fontFamily();
+    textarea.style.lineHeight = textNode.lineHeight();
+    textarea.style.border = 'none';
+    textarea.style.padding = '0px';
+    textarea.style.margin = '0px';
+    textarea.style.background = 'transparent';
+    textarea.style.outline = 'none';
+    textarea.style.resize = 'none';
+    textarea.style.color = textNode.fill();
+    
+    const scale = stage.scaleX();
+    textarea.style.transform = `scale(${scale})`;
+    textarea.style.transformOrigin = 'left top';
+
+    textarea.focus();
+
+    let isRemoving = false;
+
+    function removeTextarea() {
+        if (isRemoving) return;
+        isRemoving = true;
+
+        if (textarea.parentNode) {
+            textarea.parentNode.removeChild(textarea);
+        }
+        textNode.show();
     }
+
+    function setText() {
+        textNode.text(textarea.value);
+        removeTextarea();
+    }
+
+    textarea.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            setText();
+        }
+        if (e.key === 'Escape') {
+            removeTextarea();
+        }
+    });
+
+    textarea.addEventListener('blur', function () {
+        setText();
+    });
   });
 }
 
-// 4. Double Click on background to add a Note
 stage.on('dblclick', (e) => {
-  // If we clicked on an empty area (the stage), add a note
   if (e.target === stage) {
-    // We need to calculate position relative to the stage's zoom/pan
     const transform = stage.getAbsoluteTransform().copy();
     transform.invert();
     const pos = transform.point(stage.getPointerPosition());
@@ -96,18 +152,15 @@ stage.on('dblclick', (e) => {
   }
 });
 
-// 5. Handle Image Drag & Drop (From Desktop)
-// We need to listen to the DOM events on the container, not Konva events
 const container = document.getElementById('canvas-container');
 
 container.addEventListener('dragover', (e) => {
-  e.preventDefault(); // Necessary to allow dropping
+  e.preventDefault();
 });
 
 container.addEventListener('drop', (e) => {
   e.preventDefault();
 
-  // Get the stage position pointer to drop exactly where mouse is
   stage.setPointersPositions(e);
   const transform = stage.getAbsoluteTransform().copy();
   transform.invert();
@@ -127,7 +180,7 @@ container.addEventListener('drop', (e) => {
             y: pos.y,
             image: imgObj,
             width: 200,
-            height: 200 * (imgObj.height / imgObj.width), // Maintain aspect ratio
+            height: 200 * (imgObj.height / imgObj.width),
             draggable: true,
           });
           layer.add(konvaImage);

@@ -4,12 +4,46 @@
     <meta charset="UTF-8" />
     <title>My Visual Board</title>
     <style>
-      body { margin: 0; padding: 0; overflow: hidden; background-color: #f0f0f0; }
-      #canvas-container { width: 100vw; height: 100vh; }
+      /* Basic reset */
+      body { margin: 0; padding: 0; background-color: #f0f0f0; }
+      
+      /* Layout Container */
+      #app {
+        display: flex;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      /* Left Tool Section */
+      #tools {
+        width: 60px; /* Adjust width as needed */
+        background-color: #e0e0e0;
+        border-right: 1px solid #ccc;
+        flex-shrink: 0; /* Prevents sidebar from shrinking */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 10px;
+        z-index: 10; /* Ensures it stays on top */
+      }
+
+      /* Canvas Area */
+      #canvas-container {
+        flex-grow: 1; /* Takes up remaining space */
+        height: 100%;
+        background-color: #f0f0f0;
+        position: relative;
+      }
     </style>
   </head>
   <body>
-    <div id="canvas-container"></div>
+    <div id="app">
+      <div id="tools">
+        <div>TOOLS</div> 
+      </div>
+      
+      <div id="canvas-container"></div>
+    </div>
     <script type="module" src="/src/renderer.js"></script>
   </body>
 </html>
