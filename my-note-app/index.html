@@ -16,22 +16,24 @@
 
       /* Left Tool Section */
       #tools {
-        width: 60px; /* Adjust width as needed */
+        width: 60px;
         background-color: #e0e0e0;
         border-right: 1px solid #ccc;
-        flex-shrink: 0; /* Prevents sidebar from shrinking */
+        flex-shrink: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding-top: 10px;
-        z-index: 10; /* Ensures it stays on top */
+        padding-top: 15px;
+        gap: 15px;
+        z-index: 10;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.05);
       }
 
       /* Canvas Area */
       #canvas-container {
-        flex-grow: 1; /* Takes up remaining space */
+        flex-grow: 1;
         height: 100%;
-        background-color: #f0f0f0;
+        background-color: #ffd689f3;
         position: relative;
       }
     </style>
@@ -39,7 +41,11 @@
   <body>
     <div id="app">
       <div id="tools">
-        <div>TOOL</div> 
+        <button class="tool-btn" id="btn-note" title="Note">📝</button>
+        <button class="tool-btn" id="btn-image" title="Image">🖼️</button>
+        <button class="tool-btn" id="btn-link" title="Link">🔗</button>
+        <button class="tool-btn" id="btn-board" title="Board">📋</button>
+        <button class="tool-btn" id="btn-table" title="Table">📊</button>
       </div>
       
       <div id="canvas-container"></div>

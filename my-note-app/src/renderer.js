@@ -39,6 +39,14 @@ stage.on('wheel', (e) => {
   stage.position(newPos);
 });
 
+// Helper to get the center of the viewport relative to the stage
+function getViewportCenter() {
+    const scale = stage.scaleX();
+    const x = (-stage.x() + stage.width() / 2) / scale;
+    const y = (-stage.y() + stage.height() / 2) / scale;
+    return { x, y };
+}
+
 function createStickyNote(text, x, y) {
   const group = new Konva.Group({
     x: x,
@@ -68,6 +76,13 @@ function createStickyNote(text, x, y) {
     fill: '#555',
   });
 
+  function updateShape() {
+    const textHeight = textNode.height();
+    const newHeight = Math.max(150, textHeight + 20);
+    rect.height(newHeight);
+  }
+  updateShape();
+
   group.add(rect);
   group.add(textNode);
   layer.add(group);
@@ -91,7 +106,6 @@ function createStickyNote(text, x, y) {
     textarea.style.top = areaPosition.y + 'px';
     textarea.style.left = areaPosition.x + 'px';
     textarea.style.width = textNode.width() + 'px';
-    textarea.style.height = (textNode.height() + 20) + 'px'; 
     textarea.style.fontSize = textNode.fontSize() + 'px';
     textarea.style.fontFamily = textNode.fontFamily();
     textarea.style.lineHeight = textNode.lineHeight();
@@ -102,12 +116,22 @@ function createStickyNote(text, x, y) {
     textarea.style.outline = 'none';
     textarea.style.resize = 'none';
     textarea.style.color = textNode.fill();
+    textarea.style.overflow = 'hidden'; 
     
     const scale = stage.scaleX();
     textarea.style.transform = `scale(${scale})`;
     textarea.style.transformOrigin = 'left top';
 
+    function autoExpand() {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+        const newHeight = Math.max(150, textarea.scrollHeight + 20);
+        rect.height(newHeight);
+    }
+
+    autoExpand();
     textarea.focus();
+    textarea.addEventListener('input', autoExpand);
 
     let isRemoving = false;
 
@@ -123,6 +147,7 @@ function createStickyNote(text, x, y) {
 
     function setText() {
         textNode.text(textarea.value);
+        updateShape(); 
         removeTextarea();
     }
 
@@ -132,6 +157,7 @@ function createStickyNote(text, x, y) {
             setText();
         }
         if (e.key === 'Escape') {
+            updateShape();
             removeTextarea();
         }
     });
@@ -141,6 +167,67 @@ function createStickyNote(text, x, y) {
     });
   });
 }
+
+// Reuseable function to add image
+function addImageToStage(file, x, y) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const imgObj = new Image();
+        imgObj.src = event.target.result;
+        imgObj.onload = () => {
+            const konvaImage = new Konva.Image({
+                x: x,
+                y: y,
+                image: imgObj,
+                width: 200,
+                height: 200 * (imgObj.height / imgObj.width),
+                draggable: true,
+            });
+            layer.add(konvaImage);
+        };
+    };
+    reader.readAsDataURL(file);
+}
+
+// --- Tool Palette Event Listeners ---
+
+// 1. Note Tool
+document.getElementById('btn-note').addEventListener('click', () => {
+    const center = getViewportCenter();
+    createStickyNote('New Note', center.x - 100, center.y - 75); // Centered
+});
+
+// 2. Image Tool
+const imageInput = document.createElement('input');
+imageInput.type = 'file';
+imageInput.accept = 'image/*';
+imageInput.style.display = 'none';
+document.body.appendChild(imageInput);
+
+document.getElementById('btn-image').addEventListener('click', () => {
+    imageInput.click();
+});
+
+imageInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        const center = getViewportCenter();
+        addImageToStage(e.target.files[0], center.x - 100, center.y - 100);
+        imageInput.value = ''; // Reset so same file can be selected again
+    }
+});
+
+// 3. Link, Board, Table Tools (Placeholders)
+document.getElementById('btn-link').addEventListener('click', () => {
+    alert('Link tool coming soon!');
+});
+document.getElementById('btn-board').addEventListener('click', () => {
+    alert('Board tool coming soon!');
+});
+document.getElementById('btn-table').addEventListener('click', () => {
+    alert('Table tool coming soon!');
+});
+
+// --- Existing Stage Events ---
 
 stage.on('dblclick', (e) => {
   if (e.target === stage) {
@@ -170,23 +257,7 @@ container.addEventListener('drop', (e) => {
   if (files.length > 0) {
     const file = files[0];
     if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const imgObj = new Image();
-        imgObj.src = event.target.result;
-        imgObj.onload = () => {
-          const konvaImage = new Konva.Image({
-            x: pos.x,
-            y: pos.y,
-            image: imgObj,
-            width: 200,
-            height: 200 * (imgObj.height / imgObj.width),
-            draggable: true,
-          });
-          layer.add(konvaImage);
-        };
-      };
-      reader.readAsDataURL(file);
+        addImageToStage(file, pos.x, pos.y);
     }
   }
 });
