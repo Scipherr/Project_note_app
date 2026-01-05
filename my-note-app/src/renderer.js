@@ -161,32 +161,30 @@ function saveStoredImages(newPaths) {
 
 function renderImagesFromStorage() {
     const paths = getStoredImages();
-    feedContent.innerHTML = ''; // Clear current view
+    feedContent.innerHTML = ''; 
 
     paths.forEach(filePath => {
         const img = document.createElement('img');
         
-        // --- URL FIX START ---
-        // 1. Normalize slashes (Windows uses \, web uses /)
-        const normalizedPath = filePath.replace(/\\/g, '/');
+        // --- SIMPLIFIED LOGIC START ---
+        // 1. Just replace backslashes with forward slashes
+        // (Browsers understand 'C:/Users/...' better than 'C:\Users\...')
+        const cleanPath = filePath.replace(/\\/g, '/');
         
-        // 2. Encode URI to handle spaces, parenthesis, etc. safely
-        const safePath = encodeURI(normalizedPath);
-        
-        // 3. Use 3 slashes (media:///) to signal absolute path with empty host
-        img.src = `media:///${safePath}`; 
-        // --- URL FIX END ---
+        // 2. Point directly to the file using the standard file protocol
+        // No complex encoding needed if Web Security is disabled.
+        img.src = `file://${cleanPath}`;
+        // --- SIMPLIFIED LOGIC END ---
         
         img.className = 'feed-item';
         img.draggable = true;
         
-        // Drag to Canvas Logic
         img.addEventListener('dragstart', (e) => {
+            // Pass the DIRECT URL so the canvas can read it easily
             e.dataTransfer.setData('text/plain', img.src);
             e.dataTransfer.effectAllowed = 'copy';
         });
 
-        // Right-click to delete
         img.addEventListener('contextmenu', (e) => {
              e.preventDefault();
              if(confirm("Remove this image?")) {
@@ -196,11 +194,16 @@ function renderImagesFromStorage() {
                  renderImagesFromStorage();
              }
         });
+        
+        // Keep the error handler to know if it works
+        img.onerror = () => {
+            console.error("Still failing to load:", img.src);
+            img.style.border = "2px solid red";
+        };
 
         feedContent.appendChild(img);
     });
 }
-
 // B. Modal Interactions
 document.getElementById('btn-feed').addEventListener('click', () => {
     modal.style.display = "block";

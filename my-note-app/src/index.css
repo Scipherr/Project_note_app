@@ -40,16 +40,18 @@ body { margin: 0; padding: 0; background-color: #f0f0f049; font-family: sans-ser
   width: 100%;
   height: auto;
   max-height: 300px;
-  object-fit: contain;
+  object-fit: contain; /* Ensures image isn't stretched */
   display: block;
   margin-bottom: 2px;
   border-bottom: 1px solid #444;
   scroll-snap-align: start;
   cursor: grab;
   
+  /* DELETE THIS LINE: background-color: #000; */
+  background-color: transparent; 
 }
-.feed-item:active { cursor: grabbing; }
 
+.feed-item:active { cursor: grabbing; }
 /* --- Modal Styles --- */
 .modal {
   display: none; position: fixed; z-index: 100; left: 0; top: 0;
